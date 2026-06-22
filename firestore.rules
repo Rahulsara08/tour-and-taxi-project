@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    function isSignedIn() { return request.auth != null; }
+    function existing() { return resource.data; }
+    function incoming() { return request.resource.data; }
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'rahulsarawat547@gmail.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.keys().hasAll(['email', 'role', 'createdAt', 'updatedAt']) 
+          && data.email is string 
+          && data.role is string && (data.role == 'customer' || data.role == 'admin')
+          && data.createdAt is number 
+          && data.updatedAt is number;
+      }
+      
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      
+      // Registration flow
+      allow create: if isSignedIn() && request.auth.uid == userId 
+                    && isValidUser(incoming()) 
+                    && (incoming().role == 'customer' || (request.auth.token.email == 'rahulsarawat547@gmail.com' && incoming().role == 'admin'));
+                    
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    match /fleets/{fleetId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /destinations/{destId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /bookings/{bookingId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && (request.resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+  }
+}

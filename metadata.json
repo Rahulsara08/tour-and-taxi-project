@@ -1,0 +1,6 @@
+{
+  "name": "Shri Gurukripa Tours & Taxi",
+  "description": "A premium AI-powered taxi and tour booking web application for Rajasthan travel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

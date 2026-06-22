@@ -1,0 +1,83 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role differentiation.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["customer", "driver", "admin"] },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["email", "role", "createdAt", "updatedAt"]
+    },
+    "Fleet": {
+      "title": "Fleet Vehicle Category",
+      "description": "Vehicle fleet category available for booking.",
+      "type": "object",
+      "properties": {
+        "category": { "type": "string" },
+        "models": { "type": "string" },
+        "seats": { "type": "number" },
+        "luggage": { "type": "number" },
+        "fare": { "type": "string" },
+        "image": { "type": "string" }
+      },
+      "required": ["category", "models", "seats", "luggage", "fare", "image"]
+    },
+    "Destination": {
+      "title": "Popular Destination",
+      "description": "Destination package available for booking.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "image": { "type": "string" },
+        "desc": { "type": "string" },
+        "places": { "type": "string" },
+        "fare": { "type": "string" },
+        "distance": { "type": "string" }
+      },
+      "required": ["name", "image", "desc", "places", "fare", "distance"]
+    },
+    "Booking": {
+      "title": "Vehicle Booking",
+      "description": "Details of passenger bookings.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "customerEmail": { "type": "string" },
+        "tripType": { "type": "string" },
+        "pickup": { "type": "string" },
+        "drop": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "passengers": { "type": "string" },
+        "serviceType": { "type": "string" },
+        "fare": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "completed", "cancelled"] },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["userId", "customerEmail", "tripType", "pickup", "drop", "date", "time", "passengers", "status", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "The users collection storing roles and profiles"
+    },
+    "/fleets/{fleetId}": {
+      "schema": { "$ref": "#/entities/Fleet" },
+      "description": "The fleets available for the service"
+    },
+    "/destinations/{destId}": {
+      "schema": { "$ref": "#/entities/Destination" },
+      "description": "The destinations available for the service"
+    },
+    "/bookings/{bookingId}": {
+      "schema": { "$ref": "#/entities/Booking" },
+      "description": "User flight/cab booking documents"
+    }
+  }
+}
