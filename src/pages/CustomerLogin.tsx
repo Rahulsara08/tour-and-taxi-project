@@ -5,6 +5,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { motion } from 'motion/react';
 import { Loader2, ArrowLeft, Mail, Lock } from 'lucide-react';
+import loginCollage from '../../assets/login_collage.png';
 
 export default function CustomerLogin() {
   const navigate = useNavigate();
@@ -100,19 +101,15 @@ export default function CustomerLogin() {
       {/* Visual Section - Left Side */}
       <div className="hidden lg:flex w-1/2 relative bg-slate-900">
         <img 
-          src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&q=80" 
-          alt="Rajasthan Tourism" 
-          className="absolute inset-0 w-full h-full object-cover opacity-60"
-          referrerPolicy="no-referrer"
-          crossOrigin="anonymous"
+          src={loginCollage} 
+          alt="Shri Gurukripa Travel Journey" 
+          className="absolute inset-0 w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent"></div>
         <div className="relative z-10 flex flex-col justify-end p-16 text-white w-full">
           <Link to="/" className="absolute top-12 left-16 text-xl font-bold bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent w-max">
             Shri Gurukripa
           </Link>
-          <h1 className="text-5xl font-black mb-4">Your journey begins here.</h1>
-          <p className="text-xl text-gray-300 max-w-lg">Unlock seamless booking, secure payments, and premium Rajasthan tours.</p>
+          {/* Note: Heading and paragraph texts are already beautifully baked into the collage image */}
         </div>
       </div>
 

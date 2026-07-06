@@ -12,6 +12,9 @@ import "swiper/css/navigation";
 
 import { cn } from "../lib/utils";
 
+import userImg1 from "../../assets/user_image_1.png";
+import userImg2 from "../../assets/new_jaisalmer.jpg";
+
 // Royal destinations and fleet images featuring "Shri Gurukripa" services
 const GURUKRIPA_SLIDES = [
   {
@@ -29,18 +32,18 @@ const GURUKRIPA_SLIDES = [
     tag: "Udaipur Romance"
   },
   {
-    src: "https://images.unsplash.com/photo-1594132890528-97fcbbed921f?auto=format&fit=crop&q=80&w=1200",
-    alt: "Shri Gurukripa Indigo Tours - Jodhpur Blue City",
-    title: "The Indigo Skyline",
-    subtitle: "Witness towering Mehrangarh Fort and heritage blue alleyways",
-    tag: "Mehrangarh Tour"
+    src: userImg1,
+    alt: "Shri Gurukripa Tours - Pushkar Lake",
+    title: "Sacred Pushkar",
+    subtitle: "Witness the divine evening aarti and serene lake views",
+    tag: "Pushkar Tour"
   },
   {
-    src: "https://images.unsplash.com/photo-1504128117511-3be9cf8e5114?auto=format&fit=crop&q=80&w=1200",
-    alt: "Shri Gurukripa Thar Safari - Jaisalmer Dunes",
-    title: "Thar Golden Desert Camps",
-    subtitle: "Thrill yourselves with sunset camel rides and sand dunes safaris",
-    tag: "Desert Adventure"
+    src: userImg2,
+    alt: "Shri Gurukripa Tours - Heritage Haveli",
+    title: "Heritage Havelis",
+    subtitle: "Step back in time through the grand red stone architecture",
+    tag: "Heritage Walk"
   },
   {
     src: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=1200",
@@ -126,15 +129,16 @@ const Carousel_004 = ({
   const css = `
   .Carousal_004 {
     width: 100%;
-    height: 480px;
+    height: auto;
     padding-bottom: 50px !important;
   }
   
   .Carousal_004 .swiper-slide {
     background-position: center;
     background-size: cover;
-    width: 320px;
-    height: 400px;
+    width: 85vw;
+    max-width: 500px;
+    aspect-ratio: 3 / 2;
     border-radius: 24px;
     position: relative;
     overflow: hidden;
@@ -210,9 +214,9 @@ const Carousel_004 = ({
           modules={[EffectCreative, Pagination, Autoplay, SwiperNavigation]}
         >
           {images.map((image, index) => (
-            <SwiperSlide key={index} className="swiper-slide group border border-slate-200">
+            <SwiperSlide key={index} className="swiper-slide group border border-slate-200 rounded-2xl overflow-hidden">
               {/* Image Frame */}
-              <div className="w-full h-full relative overflow-hidden">
+              <div className="w-full h-full relative overflow-hidden rounded-2xl">
                 <img
                   className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-108"
                   src={image.src}

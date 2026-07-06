@@ -328,6 +328,55 @@ export default function AdminDashboard() {
       dataToSave.fare = Number(dataToSave.fare) || 1200;
     }
 
+    // Restructure flat form fields back into hotspots and fares objects for destinations
+    if (activeTab === 'destinations') {
+      const hotspots = [];
+      if (dataToSave.hotspot1_name) hotspots.push({ name: dataToSave.hotspot1_name, desc: dataToSave.hotspot1_desc || '' });
+      if (dataToSave.hotspot2_name) hotspots.push({ name: dataToSave.hotspot2_name, desc: dataToSave.hotspot2_desc || '' });
+      if (dataToSave.hotspot3_name) hotspots.push({ name: dataToSave.hotspot3_name, desc: dataToSave.hotspot3_desc || '' });
+      if (dataToSave.hotspot4_name) hotspots.push({ name: dataToSave.hotspot4_name, desc: dataToSave.hotspot4_desc || '' });
+      dataToSave.hotspots = hotspots;
+
+      dataToSave.fares = {
+        hatchback: {
+          name: dataToSave.fare_hatchback_name || 'Hatchback Comfort',
+          rate: dataToSave.fare_hatchback_rate || '₹11/km',
+          base: dataToSave.fare_hatchback_base || '₹999',
+          total: dataToSave.fare_hatchback_total || dataToSave.baseFare || '₹1,800',
+          calc: dataToSave.fare_hatchback_calc || '8 hrs / 80km package rate'
+        },
+        sedan: {
+          name: dataToSave.fare_sedan_name || 'Compact Sedan',
+          rate: dataToSave.fare_sedan_rate || '₹12/km',
+          base: dataToSave.fare_sedan_base || '₹1,200',
+          total: dataToSave.fare_sedan_total || '₹2,100',
+          calc: dataToSave.fare_sedan_calc || '8 hrs / 80km package rate'
+        },
+        suv: {
+          name: dataToSave.fare_suv_name || 'Premium SUV Crysta',
+          rate: dataToSave.fare_suv_rate || '₹18/km',
+          base: dataToSave.fare_suv_base || '₹2,800',
+          total: dataToSave.fare_suv_total || '₹3,500',
+          calc: dataToSave.fare_suv_calc || '8 hrs / 80km package rate'
+        }
+      };
+
+      dataToSave.isLocal = dataToSave.isLocal === true || dataToSave.isLocal === 'true';
+      dataToSave.distanceKm = Number(dataToSave.distanceKm) || 0;
+
+      // Delete flat form fields so they don't pollute document root
+      const fieldsToDelete = [
+        'hotspot1_name', 'hotspot1_desc',
+        'hotspot2_name', 'hotspot2_desc',
+        'hotspot3_name', 'hotspot3_desc',
+        'hotspot4_name', 'hotspot4_desc',
+        'fare_hatchback_name', 'fare_hatchback_rate', 'fare_hatchback_base', 'fare_hatchback_total', 'fare_hatchback_calc',
+        'fare_sedan_name', 'fare_sedan_rate', 'fare_sedan_base', 'fare_sedan_total', 'fare_sedan_calc',
+        'fare_suv_name', 'fare_suv_rate', 'fare_suv_base', 'fare_suv_total', 'fare_suv_calc'
+      ];
+      fieldsToDelete.forEach(f => delete dataToSave[f]);
+    }
+
     try {
       await setDoc(doc(db, colName, id), dataToSave);
       setIsFormOpen(false);
@@ -378,7 +427,43 @@ export default function AdminDashboard() {
   };
 
   const openForm = (item?: any) => {
-    setFormData(item || {});
+    if (item && activeTab === 'destinations') {
+      const flattened = { ...item };
+      // Flatten hotspots array
+      if (item.hotspots) {
+        if (item.hotspots[0]) { flattened.hotspot1_name = item.hotspots[0].name; flattened.hotspot1_desc = item.hotspots[0].desc; }
+        if (item.hotspots[1]) { flattened.hotspot2_name = item.hotspots[1].name; flattened.hotspot2_desc = item.hotspots[1].desc; }
+        if (item.hotspots[2]) { flattened.hotspot3_name = item.hotspots[2].name; flattened.hotspot3_desc = item.hotspots[2].desc; }
+        if (item.hotspots[3]) { flattened.hotspot4_name = item.hotspots[3].name; flattened.hotspot4_desc = item.hotspots[3].desc; }
+      }
+      // Flatten fares object
+      if (item.fares) {
+        if (item.fares.hatchback) {
+          flattened.fare_hatchback_name = item.fares.hatchback.name;
+          flattened.fare_hatchback_rate = item.fares.hatchback.rate;
+          flattened.fare_hatchback_base = item.fares.hatchback.base;
+          flattened.fare_hatchback_total = item.fares.hatchback.total;
+          flattened.fare_hatchback_calc = item.fares.hatchback.calc;
+        }
+        if (item.fares.sedan) {
+          flattened.fare_sedan_name = item.fares.sedan.name;
+          flattened.fare_sedan_rate = item.fares.sedan.rate;
+          flattened.fare_sedan_base = item.fares.sedan.base;
+          flattened.fare_sedan_total = item.fares.sedan.total;
+          flattened.fare_sedan_calc = item.fares.sedan.calc;
+        }
+        if (item.fares.suv) {
+          flattened.fare_suv_name = item.fares.suv.name;
+          flattened.fare_suv_rate = item.fares.suv.rate;
+          flattened.fare_suv_base = item.fares.suv.base;
+          flattened.fare_suv_total = item.fares.suv.total;
+          flattened.fare_suv_calc = item.fares.suv.calc;
+        }
+      }
+      setFormData(flattened);
+    } else {
+      setFormData(item || {});
+    }
     setIsFormOpen(true);
   };
 
@@ -731,19 +816,167 @@ export default function AdminDashboard() {
                 )}
 
                 {activeTab === 'destinations' && (
-                  <>
-                    <label className="block text-xs font-bold uppercase text-gray-400">Destination Name</label>
-                    <input className="w-full p-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-medium" placeholder="Destination Name (e.g. Jaipur (Pink City))" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} required/>
+                  <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                    <h4 className="text-xs font-black text-orange-500 uppercase tracking-widest border-b border-gray-150 pb-1">Basic Information</h4>
                     
-                    <label className="block text-xs font-bold uppercase text-gray-400">Visual Caption / Short Description</label>
-                    <input className="w-full p-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-medium" placeholder="Description (e.g. Heritage palaces & pink sandstone forts)" value={formData.desc || ''} onChange={e => setFormData({...formData, desc: e.target.value})} required/>
-                    
-                    <label className="block text-xs font-bold uppercase text-gray-400">Key Tourist Attractions & Places to Visit</label>
-                    <input className="w-full p-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-medium" placeholder="Places (e.g. Hawa Mahal, Amber Fort, City Palace)" value={formData.places || ''} onChange={e => setFormData({...formData, places: e.target.value})} required/>
-                    
-                    <label className="block text-xs font-bold uppercase text-gray-400">Distance Index from Hub</label>
-                    <input className="w-full p-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-medium" placeholder="Distance (e.g. 135 km from Jaipur)" value={formData.distance || ''} onChange={e => setFormData({...formData, distance: e.target.value})} required/>
-                  </>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-gray-400 mb-1">Destination Name</label>
+                        <input className="w-full p-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-medium" placeholder="e.g. Jaipur (Pink City)" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} required/>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-gray-400 mb-1">Tagline</label>
+                        <input className="w-full p-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-medium" placeholder="e.g. The Grand Crimson Crown of the Desert" value={formData.tagline || ''} onChange={e => setFormData({...formData, tagline: e.target.value})} required/>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-gray-400 mb-1">Visual Caption / Short Description</label>
+                        <input className="w-full p-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-medium" placeholder="e.g. Explore majestic palaces and heritage." value={formData.desc || ''} onChange={e => setFormData({...formData, desc: e.target.value})} required/>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-gray-400 mb-1">Key Attractions Summary</label>
+                        <input className="w-full p-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-medium" placeholder="e.g. Hawa Mahal, Amer Fort, City Palace" value={formData.places || ''} onChange={e => setFormData({...formData, places: e.target.value})} required/>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-gray-400 mb-1">Distance Text (Badge)</label>
+                        <input className="w-full p-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-medium" placeholder="e.g. 135 km from Jaipur" value={formData.distance || ''} onChange={e => setFormData({...formData, distance: e.target.value})} required/>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-gray-400 mb-1">Est. Base Fare Text</label>
+                        <input className="w-full p-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-medium" placeholder="e.g. ₹1,800/Day or ₹9,689 Roundtrip" value={formData.baseFare || ''} onChange={e => setFormData({...formData, baseFare: e.target.value})} required/>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-gray-400 mb-1">Image Path / URL</label>
+                        <input className="w-full p-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-medium" placeholder="e.g. ../../assets/dest_pushkar_ghats.png" value={formData.image || ''} onChange={e => setFormData({...formData, image: e.target.value})} required/>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-gray-400 mb-1">Distance (Numeric Km)</label>
+                        <input className="w-full p-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-medium" type="number" placeholder="135" value={formData.distanceKm || ''} onChange={e => setFormData({...formData, distanceKm: Number(e.target.value)})} required/>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold uppercase text-gray-400 mb-1">Trip Scope</label>
+                        <select className="w-full p-3 border border-gray-200 bg-gray-50 rounded-xl text-xs font-semibold" value={formData.isLocal === undefined ? 'false' : String(formData.isLocal)} onChange={e => setFormData({...formData, isLocal: e.target.value === 'true'})}>
+                          <option value="false">Outstation Journey (Roundtrip)</option>
+                          <option value="true">Local Sightseeing (Daily Package)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold uppercase text-gray-400 mb-1">Detailed History & Journey About</label>
+                      <textarea rows={3} className="w-full p-3 border border-gray-200 bg-gray-50 rounded-xl text-sm font-medium" placeholder="Provide background history, significance, and travel feel." value={formData.about || ''} onChange={e => setFormData({...formData, about: e.target.value})} required/>
+                    </div>
+
+                    <h4 className="text-xs font-black text-orange-500 uppercase tracking-widest border-b border-gray-150 pt-2 pb-1">Hotspots (Key Places to Visit)</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-gray-500">1. Hotspot Name</label>
+                        <input className="w-full p-2.5 border border-gray-200 bg-gray-50 rounded-xl text-xs font-medium" placeholder="e.g. Hawa Mahal" value={formData.hotspot1_name || ''} onChange={e => setFormData({...formData, hotspot1_name: e.target.value})}/>
+                        <label className="block text-[10px] text-gray-400 uppercase">1. Hotspot Description</label>
+                        <input className="w-full p-2.5 border border-gray-200 bg-gray-50 rounded-xl text-xs font-medium" placeholder="e.g. The Palace of Winds..." value={formData.hotspot1_desc || ''} onChange={e => setFormData({...formData, hotspot1_desc: e.target.value})}/>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-gray-500">2. Hotspot Name</label>
+                        <input className="w-full p-2.5 border border-gray-200 bg-gray-50 rounded-xl text-xs font-medium" placeholder="e.g. Amer Fort" value={formData.hotspot2_name || ''} onChange={e => setFormData({...formData, hotspot2_name: e.target.value})}/>
+                        <label className="block text-[10px] text-gray-400 uppercase">2. Hotspot Description</label>
+                        <input className="w-full p-2.5 border border-gray-200 bg-gray-50 rounded-xl text-xs font-medium" placeholder="e.g. Majestic hilltop fort..." value={formData.hotspot2_desc || ''} onChange={e => setFormData({...formData, hotspot2_desc: e.target.value})}/>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-gray-500">3. Hotspot Name</label>
+                        <input className="w-full p-2.5 border border-gray-200 bg-gray-50 rounded-xl text-xs font-medium" placeholder="e.g. City Palace" value={formData.hotspot3_name || ''} onChange={e => setFormData({...formData, hotspot3_name: e.target.value})}/>
+                        <label className="block text-[10px] text-gray-400 uppercase">3. Hotspot Description</label>
+                        <input className="w-full p-2.5 border border-gray-200 bg-gray-50 rounded-xl text-xs font-medium" placeholder="e.g. A royal residence showing..." value={formData.hotspot3_desc || ''} onChange={e => setFormData({...formData, hotspot3_desc: e.target.value})}/>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-gray-500">4. Hotspot Name</label>
+                        <input className="w-full p-2.5 border border-gray-200 bg-gray-50 rounded-xl text-xs font-medium" placeholder="e.g. Chokhi Dhani" value={formData.hotspot4_name || ''} onChange={e => setFormData({...formData, hotspot4_name: e.target.value})}/>
+                        <label className="block text-[10px] text-gray-400 uppercase">4. Hotspot Description</label>
+                        <input className="w-full p-2.5 border border-gray-200 bg-gray-50 rounded-xl text-xs font-medium" placeholder="e.g. An ethnic village resort..." value={formData.hotspot4_desc || ''} onChange={e => setFormData({...formData, hotspot4_desc: e.target.value})}/>
+                      </div>
+                    </div>
+
+                    <h4 className="text-xs font-black text-orange-500 uppercase tracking-widest border-b border-gray-150 pt-2 pb-1">Fleet Pricing Details</h4>
+                    <div className="bg-orange-50/50 dark:bg-slate-900/50 p-4 rounded-2xl border border-orange-100 dark:border-slate-800 space-y-4">
+                      {/* Hatchback */}
+                      <div className="space-y-2.5 border-b border-slate-150 dark:border-slate-800 pb-3">
+                        <span className="text-xs font-black text-slate-800 dark:text-slate-100 block">Hatchback Comfort Pricing</span>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          <div>
+                            <label className="block text-[9px] uppercase font-bold text-gray-400">Total Price</label>
+                            <input className="w-full p-2 border border-gray-200 bg-gray-50 rounded-lg text-xs font-semibold" placeholder="e.g. ₹1,800" value={formData.fare_hatchback_total || ''} onChange={e => setFormData({...formData, fare_hatchback_total: e.target.value})}/>
+                          </div>
+                          <div>
+                            <label className="block text-[9px] uppercase font-bold text-gray-400">Base Component</label>
+                            <input className="w-full p-2 border border-gray-200 bg-gray-50 rounded-lg text-xs font-semibold" placeholder="e.g. ₹999" value={formData.fare_hatchback_base || ''} onChange={e => setFormData({...formData, fare_hatchback_base: e.target.value})}/>
+                          </div>
+                          <div>
+                            <label className="block text-[9px] uppercase font-bold text-gray-400">Rate per Km</label>
+                            <input className="w-full p-2 border border-gray-200 bg-gray-50 rounded-lg text-xs font-semibold" placeholder="e.g. ₹11/km" value={formData.fare_hatchback_rate || ''} onChange={e => setFormData({...formData, fare_hatchback_rate: e.target.value})}/>
+                          </div>
+                          <div>
+                            <label className="block text-[9px] uppercase font-bold text-gray-400">Formula</label>
+                            <input className="w-full p-2 border border-gray-200 bg-gray-50 rounded-lg text-xs font-semibold" placeholder="e.g. 8 hrs / 80km package rate" value={formData.fare_hatchback_calc || ''} onChange={e => setFormData({...formData, fare_hatchback_calc: e.target.value})}/>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Sedan */}
+                      <div className="space-y-2.5 border-b border-slate-150 dark:border-slate-800 pb-3">
+                        <span className="text-xs font-black text-slate-800 dark:text-slate-100 block">Sedan Pricing</span>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          <div>
+                            <label className="block text-[9px] uppercase font-bold text-gray-400">Total Price</label>
+                            <input className="w-full p-2 border border-gray-200 bg-gray-50 rounded-lg text-xs font-semibold" placeholder="e.g. ₹2,100" value={formData.fare_sedan_total || ''} onChange={e => setFormData({...formData, fare_sedan_total: e.target.value})}/>
+                          </div>
+                          <div>
+                            <label className="block text-[9px] uppercase font-bold text-gray-400">Base Component</label>
+                            <input className="w-full p-2 border border-gray-200 bg-gray-50 rounded-lg text-xs font-semibold" placeholder="e.g. ₹1,200" value={formData.fare_sedan_base || ''} onChange={e => setFormData({...formData, fare_sedan_base: e.target.value})}/>
+                          </div>
+                          <div>
+                            <label className="block text-[9px] uppercase font-bold text-gray-400">Rate per Km</label>
+                            <input className="w-full p-2 border border-gray-200 bg-gray-50 rounded-lg text-xs font-semibold" placeholder="e.g. ₹12/km" value={formData.fare_sedan_rate || ''} onChange={e => setFormData({...formData, fare_sedan_rate: e.target.value})}/>
+                          </div>
+                          <div>
+                            <label className="block text-[9px] uppercase font-bold text-gray-400">Formula</label>
+                            <input className="w-full p-2 border border-gray-200 bg-gray-50 rounded-lg text-xs font-semibold" placeholder="e.g. 8 hrs / 80km package rate" value={formData.fare_sedan_calc || ''} onChange={e => setFormData({...formData, fare_sedan_calc: e.target.value})}/>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* SUV */}
+                      <div className="space-y-2.5">
+                        <span className="text-xs font-black text-slate-800 dark:text-slate-100 block">Premium SUV Crysta Pricing</span>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          <div>
+                            <label className="block text-[9px] uppercase font-bold text-gray-400">Total Price</label>
+                            <input className="w-full p-2 border border-gray-200 bg-gray-50 rounded-lg text-xs font-semibold" placeholder="e.g. ₹3,500" value={formData.fare_suv_total || ''} onChange={e => setFormData({...formData, fare_suv_total: e.target.value})}/>
+                          </div>
+                          <div>
+                            <label className="block text-[9px] uppercase font-bold text-gray-400">Base Component</label>
+                            <input className="w-full p-2 border border-gray-200 bg-gray-50 rounded-lg text-xs font-semibold" placeholder="e.g. ₹2,800" value={formData.fare_suv_base || ''} onChange={e => setFormData({...formData, fare_suv_base: e.target.value})}/>
+                          </div>
+                          <div>
+                            <label className="block text-[9px] uppercase font-bold text-gray-400">Rate per Km</label>
+                            <input className="w-full p-2 border border-gray-200 bg-gray-50 rounded-lg text-xs font-semibold" placeholder="e.g. ₹18/km" value={formData.fare_suv_rate || ''} onChange={e => setFormData({...formData, fare_suv_rate: e.target.value})}/>
+                          </div>
+                          <div>
+                            <label className="block text-[9px] uppercase font-bold text-gray-400">Formula</label>
+                            <input className="w-full p-2 border border-gray-200 bg-gray-50 rounded-lg text-xs font-semibold" placeholder="e.g. 8 hrs / 80km package rate" value={formData.fare_suv_calc || ''} onChange={e => setFormData({...formData, fare_suv_calc: e.target.value})}/>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 {activeTab === 'bookings' && (

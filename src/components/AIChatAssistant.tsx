@@ -7,6 +7,25 @@ interface ChatMessage {
   content: string;
 }
 
+const QUICK_TEMPLATES = [
+  {
+    label: "🗺️ Udaipur Itinerary",
+    prompt: "Generate a 3-day tourist itinerary for Udaipur detailing the must-visit lakes, palaces, driving routes, and estimated taxi fares from Jaipur."
+  },
+  {
+    label: "🏰 Jaipur Heritage Tour",
+    prompt: "Create a 2-day heritage sightseeing guide for Jaipur. Recommend key forts, palace details, and local Rajasthani food hubs."
+  },
+  {
+    label: "🏜️ Jaisalmer Desert Plan",
+    prompt: "Give me a custom itinerary for a 2-day Jaisalmer desert safari. Include sand dune camping, camel rides, and sunset viewpoints."
+  },
+  {
+    label: "🚗 Outstation Toll Helper",
+    prompt: "What are the typical driving routes, toll charges, and driver allowances when traveling outstation from Jaipur to Jodhpur?"
+  }
+];
+
 export default function AIChatAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -24,15 +43,19 @@ export default function AIChatAssistant() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+  useEffect(() => {
+    const handleOpenChat = () => {
+      setIsOpen(true);
+    };
+    window.addEventListener('open-ai-chat-assistant', handleOpenChat);
+    return () => window.removeEventListener('open-ai-chat-assistant', handleOpenChat);
+  }, []);
 
-    const userMessage = input.trim();
-    setInput('');
-    const newMessages = [...messages, { role: 'user' as const, content: userMessage }];
-    setMessages(newMessages);
+  const executeChatQuery = async (queryText: string) => {
+    if (!queryText.trim() || isLoading) return;
     setIsLoading(true);
+    const newMessages = [...messages, { role: 'user' as const, content: queryText }];
+    setMessages(newMessages);
 
     try {
       const response = await fetch('/api/chat', {
@@ -54,6 +77,14 @@ export default function AIChatAssistant() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const queryText = input.trim();
+    if (!queryText) return;
+    setInput('');
+    await executeChatQuery(queryText);
   };
 
   return (
@@ -118,6 +149,20 @@ export default function AIChatAssistant() {
                 </div>
               )}
               <div ref={messagesEndRef} />
+            </div>
+
+            {/* Quick Templates Actions Row */}
+            <div className="px-3 py-2 bg-slate-100 border-t border-gray-150 overflow-x-auto flex gap-2 scrollbar-none whitespace-nowrap select-none">
+              {QUICK_TEMPLATES.map((tmpl) => (
+                <button
+                  key={tmpl.label}
+                  type="button"
+                  onClick={() => executeChatQuery(tmpl.prompt)}
+                  className="bg-white border border-gray-200 text-gray-700 text-[10px] font-bold px-2.5 py-1.5 rounded-full hover:border-orange-500 hover:text-orange-600 transition-colors cursor-pointer inline-flex items-center gap-1 shrink-0 shadow-sm"
+                >
+                  {tmpl.label}
+                </button>
+              ))}
             </div>
 
             {/* Input area */}

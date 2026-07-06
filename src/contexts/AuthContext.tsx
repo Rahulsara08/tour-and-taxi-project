@@ -8,6 +8,9 @@ interface UserData {
   role: 'customer' | 'admin';
   createdAt: number;
   updatedAt: number;
+  name?: string;
+  age?: number;
+  phoneNumber?: string;
 }
 
 interface AuthContextType {

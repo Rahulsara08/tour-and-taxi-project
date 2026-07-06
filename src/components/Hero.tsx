@@ -37,10 +37,30 @@ export default function Hero() {
               Char Dham Tours, One-Way & Round Trips.
             </p>
             <div className="flex flex-wrap gap-4 pt-4">
-              <button className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-full font-semibold text-lg transition-all transform hover:scale-105 shadow-lg shadow-orange-600/30">
+              <button 
+                onClick={() => {
+                  const element = document.getElementById('booking-section');
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                  }
+                  const input = document.querySelector('input[placeholder*="Pickup"]') as HTMLInputElement;
+                  if (input) setTimeout(() => input.focus(), 400);
+                }}
+                className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-full font-semibold text-lg transition-all transform hover:scale-105 shadow-lg shadow-orange-600/30 cursor-pointer"
+              >
                 Book Now
               </button>
-              <button className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white px-8 py-3 rounded-full font-semibold text-lg transition-all">
+              <button 
+                onClick={() => {
+                  const element = document.getElementById('booking-section');
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                  }
+                  const input = document.querySelector('input[placeholder*="Pickup"]') as HTMLInputElement;
+                  if (input) setTimeout(() => input.focus(), 400);
+                }}
+                className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white px-8 py-3 rounded-full font-semibold text-lg transition-all cursor-pointer"
+              >
                 Get Quote
               </button>
             </div>
@@ -72,6 +92,18 @@ export default function Hero() {
 
         </div>
       </div>
+
+      {/* Seamless blurry transition gap at the bottom */}
+      <div 
+        className="absolute bottom-0 left-0 right-0 h-40 z-20 pointer-events-none" 
+        style={{ 
+          background: 'linear-gradient(to top, #020617 0%, transparent 100%)', // matches a dark slate-950 tone
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+          maskImage: 'linear-gradient(to top, black 20%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to top, black 20%, transparent 100%)'
+        }} 
+      />
     </div>
   );
 }

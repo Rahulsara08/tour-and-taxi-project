@@ -538,7 +538,7 @@ export default function SkiperVideoShowcase() {
   const progressPercent = (currentTime / 130) * 100;
 
   return (
-    <section className="py-24 bg-slate-950 text-white relative overflow-hidden">
+    <section className="py-24 bg-transparent text-white relative overflow-hidden">
       {/* Background Visual Atmospheric Gradients */}
       <div className="absolute top-1/4 left-10 w-[450px] h-[450px] bg-orange-650/10 rounded-full blur-[130px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-10 w-[550px] h-[550px] bg-emerald-600/5 rounded-full blur-[150px] pointer-events-none" />
@@ -547,13 +547,10 @@ export default function SkiperVideoShowcase() {
         
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-1.5 bg-orange-500/10 border border-orange-500/20 text-orange-400 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest mb-4">
-            <Sparkles size={13} className="text-orange-500 animate-pulse" /> Shri Gurukripa Travel Showreel
-          </div>
-          <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white uppercase">
-            Shri Gurukripa Travel Showreel
+          <h2 className="text-3xl md:text-5xl font-black tracking-tight text-[var(--text-primary)] uppercase">
+            Royal Rajasthan Showcase
           </h2>
-          <p className="text-gray-400 text-sm md:text-base font-medium max-w-2xl mx-auto mt-4 leading-relaxed font-sans">
+          <p className="text-[var(--text-secondary)] text-sm md:text-base font-medium max-w-2xl mx-auto mt-4 leading-relaxed font-sans">
             Experience our premium desert expeditions, highway cruises, and heritage tours. Play our official interactive trailer below.
           </p>
         </div>

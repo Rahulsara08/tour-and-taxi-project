@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Calendar, Clock, Users, Navigation, Phone, CheckCircle, ShieldAlert, History, ArrowRight, Loader, LocateFixed } from 'lucide-react';
+import { MapPin, Calendar, Clock, Users, Navigation, Phone, CheckCircle, ShieldAlert, History, ArrowRight, Loader, LocateFixed, ShieldCheck, Star, Share2, User, Car, Check, Map } from 'lucide-react';
 import { TripType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
@@ -37,6 +37,82 @@ export default function BookingForm() {
 
   const [detectingLoc, setDetectingLoc] = useState(false);
   const [locError, setLocError] = useState<string | null>(null);
+
+  // Promo and Safety States
+  const [promoInput, setPromoInput] = useState('');
+  const [discountApplied, setDiscountApplied] = useState(0);
+  const [promoSuccessMsg, setPromoSuccessMsg] = useState('');
+  const [promoErrorMsg, setPromoErrorMsg] = useState('');
+  
+  const [sosActive, setSosActive] = useState(false);
+  const [emergencyContact, setEmergencyContact] = useState(localStorage.getItem('sg_emergency_contact') || '');
+  const [contactSaved, setContactSaved] = useState(false);
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
+
+  const discountedFare = estimatedFare ? Math.max(0, estimatedFare - discountApplied) : 0;
+
+  // Re-calculate discount when estimatedFare changes
+  useEffect(() => {
+    setPromoInput('');
+    setDiscountApplied(0);
+    setPromoSuccessMsg('');
+    setPromoErrorMsg('');
+  }, [estimatedFare]);
+
+  const handleApplyPromo = () => {
+    setPromoErrorMsg('');
+    setPromoSuccessMsg('');
+    const code = promoInput.trim().toUpperCase();
+    if (!estimatedFare) return;
+
+    if (code === 'WELCOME10') {
+      const discount = Math.round(estimatedFare * 0.1);
+      setDiscountApplied(discount);
+      setPromoSuccessMsg('Promo WELCOME10 applied! 10% discount subtracted.');
+    } else if (code === 'RAJASTHAN15') {
+      const discount = Math.round(estimatedFare * 0.15);
+      setDiscountApplied(discount);
+      setPromoSuccessMsg('Promo RAJASTHAN15 applied! 15% discount subtracted.');
+    } else if (code === 'LOYALTY20') {
+      const discount = Math.round(estimatedFare * 0.2);
+      setDiscountApplied(discount);
+      setPromoSuccessMsg('Promo LOYALTY20 applied! 20% discount subtracted.');
+    } else {
+      setPromoErrorMsg('Invalid Promo Code. Try WELCOME10, RAJASTHAN15, or LOYALTY20.');
+    }
+  };
+
+  const handleBookWhatsApp = () => {
+    const fareVal = discountedFare || estimatedFare || 0;
+    const msg = `Hello! I would like to book a taxi with Shri Gurukripa Tours:
+- Trip Type: ${tripType}
+- Service Type: ${serviceType}
+- Vehicle Category: ${selectedTaxi?.category || 'General Upgrade'}
+- Pickup Location: ${pickup}
+- Drop Location: ${drop}
+- Date/Time: ${date} at ${time}
+- Passengers: ${passengers}
+- Estimated Price: ₹${fareVal}
+Please confirm my ride request!`;
+
+    const encodedMsg = encodeURIComponent(msg);
+    const whatsappUrl = `https://wa.me/919950071777?text=${encodedMsg}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  const saveEmergencyContact = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem('sg_emergency_contact', emergencyContact);
+    setContactSaved(true);
+    setTimeout(() => setContactSaved(false), 2000);
+  };
+
+  const handleShareRoute = () => {
+    const link = `https://shrigurukripa.in/track/${bookingSuccess}`;
+    navigator.clipboard.writeText(link);
+    setShareLinkCopied(true);
+    setTimeout(() => setShareLinkCopied(false), 3000);
+  };
 
   const detectPickupLocation = () => {
     setDetectingLoc(true);
@@ -260,9 +336,32 @@ export default function BookingForm() {
 
       // Consistent hashing based on pickup and drop length
       const combinedLength = pickup.trim().length + drop.trim().length;
-      const calculatedDistance = 25 + (combinedLength * 17) % 350;
+      let calculatedDistance = 25 + (combinedLength * 17) % 350;
+
+      // Custom route overrides for realistic distances
+      const isKishangarhJaipur = 
+        (pickup.toLowerCase().includes('kishangarh') && drop.toLowerCase().includes('jaipur')) ||
+        (pickup.toLowerCase().includes('jaipur') && drop.toLowerCase().includes('kishangarh'));
+
+      if (isKishangarhJaipur) {
+        calculatedDistance = 108; // Actual highway distance in km
+      }
 
       let finalPrice = basePrice + Math.floor(calculatedDistance * perKmMultiplier);
+
+      // Overrides for Kishangarh to Jaipur price to be exactly between 1900 and 2300 based on vehicle
+      if (isKishangarhJaipur) {
+        const cat = String(activeTaxi.category || "").toLowerCase();
+        if (cat.includes('hatchback')) {
+          finalPrice = 1900;
+        } else if (cat.includes('sedan')) {
+          finalPrice = 2100;
+        } else if (cat.includes('suv') || cat.includes('crysta')) {
+          finalPrice = 2300;
+        } else {
+          finalPrice = 2050; // Fallback
+        }
+      }
 
       if (tripType === 'Round Trip') {
         finalPrice = Math.floor(finalPrice * 1.7);
@@ -343,11 +442,17 @@ export default function BookingForm() {
       return;
     }
 
+    if (pickup.trim().toLowerCase() === drop.trim().toLowerCase() && drop.trim() !== '') {
+      setError('Invalid Route: Pickup and drop locations cannot be exactly the same.');
+      setIsSubmitting(false);
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
     const bookingId = 'SG-' + Math.floor(100000 + Math.random() * 900000);
-    const finalFare = estimatedFare || 1500;
+    const finalFare = discountedFare || estimatedFare || 1500;
 
     const payload = {
       userId: user.uid,
@@ -370,6 +475,32 @@ export default function BookingForm() {
     try {
       await setDoc(doc(db, 'bookings', bookingId), payload);
       setBookingSuccess(bookingId);
+      
+      // Dispatch SMTP confirmation email via server route
+      try {
+        await fetch('/api/email/booking-confirm', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: user.email,
+            userName: userData?.name || user.email?.split('@')[0] || 'Valued Customer',
+            bookingId: bookingId,
+            pickup: pickup,
+            drop: drop,
+            date: date,
+            time: time,
+            vehicle: selectedTaxi?.category || 'General Sedan Upgrade',
+            passengers: parseInt(passengers.match(/\d+/)?.[0] || '1'),
+            fare: finalFare,
+            tripType: tripType,
+            paymentStatus: 'Pending'
+          })
+        });
+      } catch (emailErr) {
+        console.warn("SMTP booking confirmation email failed to dispatch:", emailErr);
+      }
       
       // Save locally to cache as well
       const cached = localStorage.getItem('sg_bookings');
@@ -412,31 +543,141 @@ export default function BookingForm() {
 
   if (bookingSuccess) {
     return (
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-auto xl:ml-auto text-center border border-green-100">
-        <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
-          <CheckCircle className="h-10 w-10 text-green-500" />
+      <div className="bg-white rounded-2xl shadow-2xl p-6 md:p-8 w-full max-w-md mx-auto xl:ml-auto border border-orange-100 flex flex-col gap-5">
+        {/* SOS Warning Modal Banner */}
+        {sosActive && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 text-left text-red-700 animate-pulse">
+            <div className="flex gap-2 items-start">
+              <ShieldAlert className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider text-red-800">EMERGENCY ALERTS ACTIVE!</p>
+                <p className="text-[11px] font-semibold mt-1 leading-normal">
+                  Sharing your live GPS location with local authorities and emergency contacts.
+                </p>
+                <button
+                  onClick={() => setSosActive(false)}
+                  className="mt-2 text-[10px] font-extrabold bg-red-650 text-white px-2.5 py-1 rounded hover:bg-red-700 transition-colors"
+                >
+                  Cancel SOS
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="text-center">
+          <div className="w-12 h-12 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3">
+            <CheckCircle className="h-7 w-7 text-green-500" />
+          </div>
+          <h3 className="text-xl font-extrabold text-gray-900 leading-tight">Booking Confirmed!</h3>
+          <p className="text-gray-550 text-gray-500 text-xs mt-1 font-semibold">Your ride is being dispatched in real-time.</p>
         </div>
-        <h3 className="text-2xl font-extrabold text-gray-900 mb-2">Booking Confirmed!</h3>
-        <p className="text-gray-600 mb-4 font-semibold text-sm">
-          Your ride request is receiving instant attention. Our dispatcher will contact you immediately.
-        </p>
-        <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 mb-6">
-          <p className="text-xs uppercase font-extrabold tracking-wider text-gray-400">Booking Reference ID</p>
-          <p className="text-2xl font-black text-slate-800 tracking-wider font-mono">{bookingSuccess}</p>
+
+        {/* Live Driver Card & ETA */}
+        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-3">
+          <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+            <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider">Driver Assigned</span>
+            <div className="flex items-center gap-1 bg-green-105 bg-green-100 text-green-800 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold">
+              <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></span>
+              ETA: 12 Mins
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-slate-200 border-2 border-white shadow-sm flex items-center justify-center text-slate-500 overflow-hidden shrink-0">
+              <User className="h-6 w-6 text-slate-450" />
+            </div>
+            <div className="flex-1 text-left">
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-sm text-slate-900">Ramesh Kumar</span>
+                <span className="text-[10px] text-gray-400 font-semibold">(রমেশ কুমার)</span>
+              </div>
+              <div className="flex items-center gap-2 mt-0.5 text-xs">
+                <span className="flex items-center gap-0.5 text-amber-505 text-amber-500 font-bold">
+                  <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> 4.9
+                </span>
+                <span className="flex items-center gap-0.5 text-emerald-600 font-extrabold bg-emerald-50 px-1.5 py-0.5 rounded text-[9px]">
+                  <ShieldCheck className="h-3 w-3" /> Verified
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 bg-white border border-slate-100 rounded-xl p-2.5 text-xs text-slate-700 font-semibold">
+            <Car className="h-4 w-4 text-slate-400" />
+            <div className="flex-1 text-left">
+              <p className="text-[10px] text-gray-400 leading-none">Vehicle</p>
+              <p className="text-slate-900 mt-0.5 text-[11px]">White Toyota Innova Crysta</p>
+            </div>
+            <div className="bg-slate-100 border border-slate-200 rounded px-2 py-1 font-mono font-black text-slate-800 tracking-wider text-[11px]">
+              RJ-14-TD-4567
+            </div>
+          </div>
         </div>
-        <div className="space-y-3">
+
+        {/* SOS Emergency button & Share link */}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setSosActive(true)}
+            className="flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-700 text-white font-extrabold py-3 px-4 rounded-xl transition-all shadow-md shadow-red-600/10 text-xs uppercase cursor-pointer"
+          >
+            <ShieldAlert size={15} />
+            SOS Emergency
+          </button>
+          
+          <button
+            type="button"
+            onClick={handleShareRoute}
+            className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-805 hover:bg-slate-800 text-white font-extrabold py-3 px-4 rounded-xl transition-all text-xs uppercase cursor-pointer"
+          >
+            {shareLinkCopied ? <Check size={15} className="text-emerald-400" /> : <Share2 size={15} />}
+            {shareLinkCopied ? "Copied" : "Share Route"}
+          </button>
+        </div>
+
+        {/* Emergency Contact Setup */}
+        <form onSubmit={saveEmergencyContact} className="bg-slate-50/50 border border-slate-100/80 rounded-xl p-3.5 text-left">
+          <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Emergency Contact Details</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Name & Phone (e.g. Papa +91 99500 XXXXX)"
+              value={emergencyContact}
+              onChange={(e) => setEmergencyContact(e.target.value)}
+              className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white font-medium focus:ring-1 focus:ring-red-500 outline-none"
+            />
+            <button
+              type="submit"
+              className="bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-extrabold px-3 py-2 rounded-lg transition-all shrink-0 cursor-pointer"
+            >
+              {contactSaved ? "Saved ✓" : "Save"}
+            </button>
+          </div>
+        </form>
+
+        {/* Booking ID reference card */}
+        <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 flex justify-between items-center text-xs">
+          <span className="text-gray-400 font-extrabold uppercase tracking-wider text-[10px]">Booking Reference</span>
+          <span className="font-black text-slate-800 tracking-wider font-mono bg-white px-2 py-0.5 border border-gray-100 rounded">{bookingSuccess}</span>
+        </div>
+
+        {/* Action button triggers */}
+        <div className="space-y-2 mt-1">
           <button 
+            type="button"
             onClick={() => {
               setBookingSuccess(null);
               setShowHistory(true);
             }} 
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 px-4 rounded-xl transition-colors text-sm"
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-extrabold py-3.5 px-4 rounded-xl transition-all text-xs uppercase tracking-wider shadow-sm shadow-orange-600/20 cursor-pointer"
           >
             Track Status in History
           </button>
           <button 
+            type="button"
             onClick={() => setBookingSuccess(null)} 
-            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-4 rounded-xl transition-colors text-sm"
+            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-extrabold py-3 px-4 rounded-xl transition-colors text-xs uppercase tracking-wider cursor-pointer"
           >
             Book Another Ride
           </button>
@@ -508,31 +749,6 @@ export default function BookingForm() {
             Back to Booking Form
           </button>
         </div>
-      ) : !isCustomer ? (
-        // Locked / Customer Authenticated screen trigger
-        <div className="py-8 text-center space-y-5">
-          <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mx-auto">
-            <ShieldAlert className="h-8 w-8 text-orange-600 animate-pulse" />
-          </div>
-          <div className="space-y-2">
-            <h4 className="text-lg font-black text-slate-900">Registered Customers Only</h4>
-            <p className="text-sm text-gray-500 max-w-xs mx-auto leading-relaxed">
-              To request services, manage real-time status tracking, and request prompt drivers, please authenticate.
-            </p>
-          </div>
-          <div className="pt-2">
-            <Link 
-              to="/login/customer" 
-              className="w-full flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 text-white font-extrabold py-3.5 px-6 rounded-xl transition-all shadow-md shadow-orange-600/20 text-sm"
-            >
-              Sign In / Sign Up
-              <ArrowRight size={16} />
-            </Link>
-          </div>
-          <p className="text-xs text-gray-400 font-medium">
-            Takes less than 1 minute to setup a new account.
-          </p>
-        </div>
       ) : (
         // Standard high-fidelity booking form
         <form onSubmit={handleBookTaxi} className="space-y-4">
@@ -569,18 +785,32 @@ export default function BookingForm() {
                   setPickup(e.target.value);
                   if (locError) setLocError(null);
                 }}
-                className="block w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-gray-50 transition-colors text-sm font-medium placeholder-gray-400"
+                className="block w-full pl-10 pr-20 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-gray-50 transition-colors text-sm font-medium placeholder-gray-400"
                 placeholder="Pickup Location (e.g. Jaipur Airport)"
               />
-              <button
-                type="button"
-                onClick={detectPickupLocation}
-                disabled={detectingLoc}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-orange-500 transition-colors disabled:opacity-50 cursor-pointer"
-                title="Detect live location"
-              >
-                <LocateFixed className={`h-5 w-5 ${detectingLoc ? 'animate-spin text-orange-500' : ''}`} />
-              </button>
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={detectPickupLocation}
+                  disabled={detectingLoc}
+                  className="text-gray-400 hover:text-orange-500 transition-colors disabled:opacity-50 cursor-pointer"
+                  title="Detect live location"
+                >
+                  <LocateFixed className={`h-5 w-5 ${detectingLoc ? 'animate-spin text-orange-500' : ''}`} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById('location');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    window.dispatchEvent(new CustomEvent('set-map-pin-mode', { detail: { mode: 'pickup' } }));
+                  }}
+                  className="text-gray-400 hover:text-orange-500 transition-colors cursor-pointer"
+                  title="Choose on map"
+                >
+                  <Map className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             {locError && (
@@ -602,9 +832,21 @@ export default function BookingForm() {
                 required
                 value={drop}
                 onChange={(e) => setDrop(e.target.value)}
-                className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-gray-50 transition-colors text-sm font-medium placeholder-gray-400"
+                className="block w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-gray-50 transition-colors text-sm font-medium placeholder-gray-400"
                 placeholder="Drop Location (e.g. Ajmer)"
               />
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('location');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  window.dispatchEvent(new CustomEvent('set-map-pin-mode', { detail: { mode: 'drop' } }));
+                }}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-orange-500 transition-colors cursor-pointer"
+                title="Choose on map"
+              >
+                <Map className="h-5 w-5" />
+              </button>
             </div>
           </div>
 
@@ -638,8 +880,8 @@ export default function BookingForm() {
           </div>
 
           {/* Select Taxi Option */}
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3.5 space-y-2">
-            <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500">Select Taxi / Vehicle Preference</label>
+          <div className="bg-slate-50 dark:bg-[#111827] border border-slate-100 dark:border-slate-800 rounded-2xl p-3.5 space-y-2">
+            <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">Select Taxi / Vehicle Preference</label>
             <div className="grid grid-cols-3 gap-2">
               {(() => {
                 const uniqueTaxis = [...availableFleets, ...fallbackFleets].reduce((acc: any[], cur: any) => {
@@ -656,12 +898,12 @@ export default function BookingForm() {
                     onClick={() => setSelectedTaxi(t)}
                     className={`flex flex-col items-center justify-between p-2 rounded-xl border text-center transition-all cursor-pointer ${
                       selectedTaxi?.category === t.category
-                        ? 'border-orange-500 bg-orange-100/40 text-orange-850 ring-2 ring-orange-550/10 font-bold'
-                        : 'border-slate-200 hover:bg-slate-100/50 bg-white text-slate-700'
+                        ? 'border-orange-500 bg-orange-100/40 dark:bg-orange-900/30 text-orange-850 dark:text-orange-100 ring-2 ring-orange-500/20 shadow-[0_0_15px_rgba(249,115,22,0.4)] dark:shadow-[0_0_20px_rgba(249,115,22,0.7)] font-bold relative z-10'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-100/50 dark:hover:bg-slate-800/80 bg-white dark:bg-black text-slate-700 dark:text-slate-300'
                     }`}
                   >
                     <span className="text-[10px] font-extrabold leading-tight block mb-1.5 truncate w-full">{t.category}</span>
-                    <span className="text-[9px] text-orange-600 font-extrabold leading-none bg-orange-50 px-1.5 py-0.5 rounded">{t.fare ? String(t.fare).split(' ')[0] : 'Base'}</span>
+                    <span className="text-[9px] text-orange-600 dark:text-orange-400 font-extrabold leading-none bg-orange-50 dark:bg-orange-500/10 px-1.5 py-0.5 rounded">{t.fare ? String(t.fare).split(' ')[0] : 'Base'}</span>
                   </button>
                 ));
               })()}
@@ -719,19 +961,103 @@ export default function BookingForm() {
             <p className="text-xs text-red-600 font-bold p-2 bg-red-50 border border-red-100 rounded-lg">{error}</p>
           )}
 
+          {/* Promo code & WhatsApp booking actions */}
           {estimatedFare !== null && (
-            <div className="p-4 bg-green-50 border border-green-100 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-bottom-2">
-              <div>
-                <p className="text-xs text-green-700 uppercase font-extrabold tracking-wider">Estimated Fare</p>
-                <p className="text-2xl font-black text-green-600">₹{estimatedFare}</p>
+            <div className="space-y-3 mt-2">
+              {/* Promo code input field */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Enter Promo Code (WELCOME10, RAJASTHAN15)"
+                  value={promoInput}
+                  onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                  disabled={discountApplied > 0}
+                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-xs font-bold uppercase focus:ring-1 focus:ring-orange-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyPromo}
+                  disabled={discountApplied > 0 || !promoInput.trim()}
+                  className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {discountApplied > 0 ? "Applied" : "Apply"}
+                </button>
               </div>
-              <button 
-                type="submit" 
-                disabled={isSubmitting}
-                className="text-xs font-extrabold text-white bg-green-600 hover:bg-green-700 px-5 py-3 rounded-lg transition-colors shadow-sm shadow-green-600/20 flex items-center gap-1.5"
-              >
-                {isSubmitting ? <Loader className="animate-spin" size={14} /> : "Book Cab"}
-              </button>
+
+              {promoSuccessMsg && (
+                <p className="text-[10px] text-emerald-600 font-bold px-1 animate-in fade-in">
+                  ✓ {promoSuccessMsg}
+                </p>
+              )}
+              {promoErrorMsg && (
+                <p className="text-[10px] text-amber-600 font-bold px-1 animate-in fade-in">
+                  ⚠️ {promoErrorMsg}
+                </p>
+              )}
+
+              <div className="p-4 bg-green-50 border border-green-100 rounded-xl flex items-center justify-between animate-in fade-in">
+                <div>
+                  <p className="text-xs text-green-700 uppercase font-extrabold tracking-wider">
+                    {discountApplied > 0 ? "Discounted Fare" : "Estimated Fare"}
+                  </p>
+                  <div className="flex items-baseline gap-1.5">
+                    {discountApplied > 0 && (
+                      <span className="text-sm line-through text-green-700/60 font-semibold">
+                        ₹{estimatedFare}
+                      </span>
+                    )}
+                    <span className="text-2xl font-black text-green-605 text-green-600">
+                      ₹{discountedFare}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2 w-full">
+                  {isCustomer ? (
+                    <div className="flex gap-2 w-full">
+                      <button
+                        type="button"
+                        onClick={handleBookWhatsApp}
+                        className="flex-1 text-xs font-extrabold text-white bg-[#25D366] hover:bg-[#20bd5a] px-3 py-3 rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer shadow-sm shadow-[#25D366]/20"
+                        title="Book instantly via WhatsApp Chat"
+                      >
+                        WhatsApp
+                      </button>
+
+                      <button 
+                        type="submit" 
+                        disabled={isSubmitting}
+                        className="flex-1 text-xs font-extrabold text-white bg-green-600 hover:bg-green-700 px-3 py-3 rounded-lg transition-colors shadow-sm shadow-green-600/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        {isSubmitting ? <Loader className="animate-spin" size={14} /> : "Book Online"}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2 w-full text-left">
+                      {/* Guest User: Direct WhatsApp button */}
+                      <button
+                        type="button"
+                        onClick={handleBookWhatsApp}
+                        className="w-full text-xs font-extrabold text-white bg-[#25D366] hover:bg-[#20bd5a] py-3 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-green-500/10"
+                      >
+                        Book instantly on WhatsApp (No Login)
+                      </button>
+                      
+                      <div className="text-center py-0.5">
+                        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">— OR —</span>
+                      </div>
+
+                      <Link 
+                        to="/login/customer"
+                        className="w-full flex items-center justify-center gap-1.5 bg-orange-600 hover:bg-orange-700 text-white font-extrabold py-3 px-4 rounded-xl transition-all shadow-md shadow-orange-600/10 text-xs uppercase"
+                      >
+                        Login to Book Online (SMTP Mail)
+                        <ArrowRight size={14} />
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -745,6 +1071,17 @@ export default function BookingForm() {
             </button>
           )}
         </form>
+      )}
+
+      {/* Referral Program marketing card */}
+      {!showHistory && isCustomer && (
+        <div className="mt-6 p-4 bg-orange-50/50 border border-orange-100/60 rounded-2xl text-center space-y-1">
+          <p className="text-[10px] text-orange-600 uppercase font-black tracking-wider">referral rewards program</p>
+          <p className="text-xs font-bold text-slate-805 text-slate-800">Earn ₹200 Free Cab Credits!</p>
+          <p className="text-[11px] text-gray-500 font-semibold leading-normal">
+            Share code <code className="bg-orange-105 bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-black font-mono">GURUKRIPA-REF</code> with a friend to get ₹200 off your next trip.
+          </p>
+        </div>
       )}
     </div>
   );

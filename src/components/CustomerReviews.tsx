@@ -28,19 +28,19 @@ const reviews = [
 
 export default function CustomerReviews() {
   return (
-    <section className="py-24 bg-gray-50 border-t border-b border-gray-100">
+    <section className="py-24 bg-transparent">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-[var(--text-primary)] mb-4">
             Loved by Travelers
           </h2>
           <div className="flex items-center justify-center gap-2 mb-4">
-            <span className="text-4xl font-black text-gray-900">4.9</span>
+            <span className="text-4xl font-black text-[var(--text-primary)]">4.9</span>
             <div className="flex text-yellow-400">
               {[1, 2, 3, 4, 5].map(i => <Star fill="currentColor" key={i} />)}
             </div>
           </div>
-          <p className="text-lg text-gray-600 bg-blue-50 text-blue-700 py-3 px-6 rounded-full inline-flex font-medium">
+          <p className="text-lg text-blue-700 dark:text-blue-200 bg-blue-550/10 py-3 px-6 rounded-full inline-flex font-medium border border-blue-500/10">
             "95% customers praised punctuality and clean vehicles." - AI Summary
           </p>
         </div>
@@ -53,16 +53,16 @@ export default function CustomerReviews() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100"
+              className="bg-[var(--bg-card)] p-8 rounded-2xl shadow-sm border border-white/5"
             >
               <div className="flex items-center gap-4 mb-6">
                 <img src={review.avatar} alt={review.name} className="w-14 h-14 rounded-full object-cover" referrerPolicy="no-referrer" crossOrigin="anonymous" />
                 <div>
-                  <h4 className="font-bold text-gray-900 flex items-center gap-1">
+                  <h4 className="font-bold text-[var(--text-primary)] flex items-center gap-1">
                     {review.name}
                     <CheckCircle size={16} className="text-blue-500" />
                   </h4>
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
                     <div className="flex text-yellow-400">
                       {[...Array(review.rating)].map((_, i) => <Star fill="currentColor" size={14} key={i} />)}
                     </div>
@@ -70,7 +70,7 @@ export default function CustomerReviews() {
                   </div>
                 </div>
               </div>
-              <p className="text-gray-600 leading-relaxed italic">
+              <p className="text-[var(--text-secondary)] leading-relaxed italic">
                 "{review.content}"
               </p>
             </motion.div>

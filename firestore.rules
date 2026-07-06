@@ -33,7 +33,13 @@ service cloud.firestore {
                     && isValidUser(incoming()) 
                     && (incoming().role == 'customer' || (request.auth.token.email == 'rahulsarawat547@gmail.com' && incoming().role == 'admin'));
                     
-      allow update: if isAdmin();
+      // Allow users to update their own profile data (name, age, phone) securely
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        (request.auth.uid == userId 
+          && request.resource.data.role == resource.data.role 
+          && request.resource.data.email == resource.data.email)
+      );
       allow delete: if isAdmin();
     }
     

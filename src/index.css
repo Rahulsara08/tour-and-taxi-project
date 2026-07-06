@@ -6,18 +6,132 @@
   --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
 }
 
+/* ─── Static solid background ────────────────────────────────────────── */
+body {
+  background-color: #f5f4ee;
+}
+
+/* Dark mode: matching the uploaded dark base color exactly */
+html.dark body {
+  background-color: #060713;
+}
+
+
+/* ─── Dark / Light mode CSS custom properties ─────────────────────────── */
+:root {
+  --bg-primary:     #f5f4ee;
+  --bg-secondary:   transparent;
+  --bg-card:        rgba(255, 255, 255, 0.9);
+  --text-primary:   #0f172a;
+  --text-secondary: #475569;
+  --border-color:   transparent; /* removes border separating lines */
+  --header-bg:      rgba(245, 244, 238, 0.65);
+}
+
+html.dark {
+  --bg-primary:     #060713;
+  --bg-secondary:   transparent;
+  --bg-card:        rgba(15, 17, 28, 0.85);
+  --text-primary:   #f8fafc;
+  --text-secondary: #cbd5e1;
+  --border-color:   transparent; /* removes border separating lines */
+  --header-bg:      rgba(6, 7, 19, 0.65);
+}
+
+/* ─── Base tokens ──────────────────────────────────────────────────────── */
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
 body {
   font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+#root {
+  overflow-x: hidden;
+  width: 100%;
+  position: relative;
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
 }
 
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
+/* ─── Dark-mode section overrides ─────────────────────────────────────── */
+
+/* White sections → dark card backgrounds */
+html.dark section,
+html.dark .bg-white {
+  background-color: var(--bg-primary) !important;
 }
-.hide-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+
+html.dark .bg-slate-50 {
+  background-color: var(--bg-secondary) !important;
 }
+
+html.dark .bg-slate-100 {
+  background-color: #1e293b !important;
+}
+
+/* Text tokens */
+html.dark .text-slate-900,
+html.dark .text-gray-900 {
+  color: var(--text-primary) !important;
+}
+
+html.dark .text-slate-600,
+html.dark .text-gray-600,
+html.dark .text-slate-700,
+html.dark .text-gray-700 {
+  color: var(--text-secondary) !important;
+}
+
+/* Cards / borders */
+html.dark .border-slate-100,
+html.dark .border-slate-200,
+html.dark .border-gray-100,
+html.dark .border-gray-200 {
+  border-color: var(--border-color) !important;
+}
+
+html.dark .shadow-sm,
+html.dark .shadow-md,
+html.dark .shadow-lg,
+html.dark .shadow-xl {
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.45) !important;
+}
+
+/* Header */
+html.dark header {
+  background-color: var(--header-bg) !important;
+  border-bottom: 1px solid var(--border-color);
+}
+
+html.dark header a.text-gray-700,
+html.dark header a {
+  color: var(--text-secondary) !important;
+}
+
+/* Inputs */
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: #141414 !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Smooth transitions everywhere */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color;
+  transition-duration: 0.3s;
+  transition-timing-function: ease;
+}
+
+/* Utility – scrollbar hiding */
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
